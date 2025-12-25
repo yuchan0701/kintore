@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>筋トレ セットカウンター & タイマー</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+            user-select: none; /* テキスト選択を無効化 */
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px 60px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 450px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        #counterDisplay {
+            font-size: 6em;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 20px;
+            line-height: 1;
+        }
+
+        #actionButton {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 1.8em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            width: 100%;
+            margin-bottom: 30px;
+            box-shadow: 0 5px #1e7e34;
+        }
+
+        #actionButton:hover {
+            background-color: #218838;
+        }
+       
+        #actionButton:active {
+            transform: translateY(2px);
+            box-shadow: 0 3px #1e7e34;
+        }
+
+        .timer-section {
+            margin-top: 30px;
+            background-color: #e9ecef;
+            padding: 25px;
+            border-radius: 10px;
+        }
+
+        #timerDisplay {
+            font-size: 3em;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 20px;
+            transition: color 0.5s ease;
+        }
+
+        #progressBarContainer {
+            width: 100%;
+            background-color: #ccc;
+            border-radius: 5px;
+            overflow: hidden; /* 角丸を効かせるため */
+            height: 30px;
+            margin-bottom: 20px;
+        }
+
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background-color: #ffc107;
+            transition: width 0.5s linear, background-color 0.5s ease;
+        }
+
+        .settings {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .settings label {
+            margin-right: 10px;
+        }
+        
+        .settings input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 60px;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        /* クールダウン終了通知スタイル */
+        .timer-finished #timerDisplay {
+            color: #28a745;
+            animation: pulse 1s infinite;
+        }
+
+        .timer-finished #progressBar {
+            background-color: #28a745;
+        }
+        
+        .timer-finished .timer-section {
+             border: 3px solid #28a745;
+             box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>筋トレ カウンター</h1>
+
+        <div id="counterDisplay">0</div>
+
+        <button id="actionButton">カウント & スタート (Space)</button>
+
+        <div class="timer-section" id="timerSection">
+            <h2>クールダウン</h2>
+            <div id="timerDisplay">02:00</div>
+            <div id="progressBarContainer">
+                <div id="progressBar"></div>
+            </div>
+             <div class="settings">
+                <label for="cooldownTime">タイマー時間 (秒):</label>
+                <input type="number" id="cooldownTime" value="180" min="1">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const counterDisplay = document.getElementById('counterDisplay');
+        const actionButton = document.getElementById('actionButton');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const progressBar = document.getElementById('progressBar');
+        const cooldownTimeInput = document.getElementById('cooldownTime');
+        const timerSection = document.getElementById('timerSection');
+
+        let setCount = 0;
+        let timerInterval = null;
+        let totalSeconds = 180; // デフォルトのクールダウン時間（秒）
+        let remainingSeconds = 0;
+        let isTimerRunning = false;
+
+        // 初期表示を更新
+        updateTimerDisplay(totalSeconds);
+
+        // カウントアップとタイマースタート処理
+        function handleAction() {
+            // タイマーが動いているときはカウントアップしない（誤操作防止）
+            if (isTimerRunning) return;
+
+            setCount++;
+            counterDisplay.textContent = setCount;
+
+            startCooldownTimer();
+        }
+
+        // クールダウンタイマースタート
+        function startCooldownTimer() {
+            clearInterval(timerInterval); // 既存のタイマーがあればクリア
+            timerSection.classList.remove('timer-finished'); // 通知スタイルをリセット
+            
+            totalSeconds = parseInt(cooldownTimeInput.value) || 180; // 入力値を取得、無効なら120秒
+            remainingSeconds = totalSeconds;
+            isTimerRunning = true;
+            cooldownTimeInput.disabled = true; // タイマー中は変更不可に
+
+            updateTimerDisplay(remainingSeconds);
+            updateProgressBar();
+
+            timerInterval = setInterval(() => {
+                remainingSeconds--;
+                updateTimerDisplay(remainingSeconds);
+                updateProgressBar();
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    isTimerRunning = false;
+                    cooldownTimeInput.disabled = false; // 変更可能に戻す
+                    showNotification();
+                }
+            }, 1000); // 1秒ごとに更新
+        }
+
+        // タイマー表示更新
+        function updateTimerDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // プログレスバー更新
+        function updateProgressBar() {
+            const progress = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // クールダウン終了通知
+        function showNotification() {
+            timerSection.classList.add('timer-finished');
+            progressBar.style.width = '100%'; // 確実に100%にする
+            // ここでさらに派手な視覚効果（点滅など）を追加することも可能です
+        }
+
+        // ボタンクリックイベント
+        actionButton.addEventListener('click', handleAction);
+
+        // スペースキー押下イベント
+        document.addEventListener('keydown', (event) => {
+            // 入力フィールドにフォーカスがある場合は動作しない
+            if (event.target.tagName.toLowerCase() === 'input') {
+                return;
+            }
+            if (event.code === 'Space' || event.key === ' ') {
+                event.preventDefault(); // 画面スクロールなどを防ぐ
+                handleAction();
+            }
+        });
+
+        // タイマー時間変更イベント
+        cooldownTimeInput.addEventListener('change', () => {
+            if (!isTimerRunning) {
+                totalSeconds = parseInt(cooldownTimeInput.value) || 180;
+                updateTimerDisplay(totalSeconds);
+                progressBar.style.width = '0%'; // 時間変更時はプログレスバーリセット
+                timerSection.classList.remove('timer-finished');
+            }
+        });
+        
+        // 初期のタイマー表示を設定
+        updateTimerDisplay(parseInt(cooldownTimeInput.value) || 180);
+
+    </script>
+
+</body>
+</html>
